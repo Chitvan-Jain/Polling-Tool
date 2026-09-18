@@ -1,0 +1,15 @@
+# environment secrets
+.env
+*.env.local
+
+# backend
+backend/tmp/
+backend/*.exe
+
+# frontend
+frontend/node_modules/
+frontend/dist/
+
+# editor/OS
+.vscode/
+.DS_Store
