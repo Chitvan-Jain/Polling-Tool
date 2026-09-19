@@ -4,6 +4,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import CreatePoll from "./pages/CreatePoll";
+import VotePage from "./pages/VotePage";
 
 export default function App() {
   return (
@@ -12,6 +13,7 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/vote/:slug" element={<VotePage />} />
           <Route
             path="/"
             element={

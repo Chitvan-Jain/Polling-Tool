@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -17,6 +18,7 @@ import (
 
 type PollHandler struct {
 	Polls *mongo.Collection
+	Redis *redis.Client
 }
 
 type createPollRequest struct {
@@ -95,5 +97,20 @@ func (h *PollHandler) GetBySlug(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, poll)
+	hasVoted := false
+	if voterID, err := c.Cookie("voter_id"); err == nil && voterID != "" {
+		votersKey := "poll:" + poll.ID.Hex() + ":voters"
+		if isMember, err := h.Redis.SIsMember(ctx, votersKey, voterID).Result(); err == nil {
+			hasVoted = isMember
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"id":         poll.ID,
+		"title":      poll.Title,
+		"options":    poll.Options,
+		"status":     poll.Status,
+		"share_slug": poll.ShareSlug,
+		"has_voted":  hasVoted,
+	})
 }

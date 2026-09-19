@@ -31,7 +31,7 @@ func main() {
 	db.EnsureVoteIndexes(votesCollection)
 
 	authHandler := &handlers.AuthHandler{Users: usersCollection, JWTSecret: cfg.JWTSecret}
-	pollHandler := &handlers.PollHandler{Polls: pollsCollection}
+	pollHandler := &handlers.PollHandler{Polls: pollsCollection, Redis: redisClient}
 	voteHandler := &handlers.VoteHandler{Polls: pollsCollection, Votes: votesCollection, Redis: redisClient}
 
 	router := gin.Default()
