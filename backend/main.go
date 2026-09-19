@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 
@@ -34,6 +35,14 @@ func main() {
 	voteHandler := &handlers.VoteHandler{Polls: pollsCollection, Votes: votesCollection, Redis: redisClient}
 
 	router := gin.Default()
+
+router.Use(cors.New(cors.Config{
+	AllowOrigins:     []string{"http://localhost:5173"},
+	AllowMethods:     []string{"GET", "POST", "PATCH", "DELETE", "OPTIONS"},
+	AllowHeaders:     []string{"Content-Type", "Authorization"},
+	AllowCredentials: true,
+	MaxAge:           12 * time.Hour,
+}))
 
 	router.GET("/health", func(c *gin.Context) {
 		ctx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
