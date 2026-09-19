@@ -101,14 +101,14 @@ export default function CreatePoll() {
                 required
               />
               {options.length > 2 && (
-                <button type="button" onClick={() => removeOption(i)} aria-label={`Remove option ${i + 1}`}>
-                  ✕
-                </button>
+                <button type="button" className="remove-option-button" onClick={() => removeOption(i)} aria-label={`Remove option ${i + 1}`}>
+  ✕
+</button>
               )}
             </div>
           ))}
           {options.length < 10 && (
-            <button type="button" onClick={addOption}>+ Add option</button>
+            <button type="button" className="add-option-button" onClick={addOption}>+ Add option</button>
           )}
         </fieldset>
 
