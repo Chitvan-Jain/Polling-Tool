@@ -38,4 +38,5 @@ export const api = {
 	vote: (slug, optionId) => request(`/api/p/${slug}/vote`, { method: "POST", body: { option_id: optionId } }),
 	getResults: (slug) => request(`/api/p/${slug}/results`),
 	getMyPolls: () => request("/api/polls", { auth: true }),
+	deletePoll: (id) => request(`/api/polls/${id}`, { method: "DELETE", auth: true }),
 };

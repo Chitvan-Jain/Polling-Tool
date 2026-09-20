@@ -31,7 +31,7 @@ func main() {
 	db.EnsureVoteIndexes(votesCollection)
 
 	authHandler := &handlers.AuthHandler{Users: usersCollection, JWTSecret: cfg.JWTSecret}
-	pollHandler := &handlers.PollHandler{Polls: pollsCollection, Redis: redisClient}
+	pollHandler := &handlers.PollHandler{Polls: pollsCollection, Votes: votesCollection, Redis: redisClient}
 	voteHandler := &handlers.VoteHandler{Polls: pollsCollection, Votes: votesCollection, Redis: redisClient}
 
 	router := gin.Default()
@@ -79,11 +79,12 @@ router.Use(cors.New(cors.Config{
 		}
 
 		pollsGroup := api.Group("/polls")
-		pollsGroup.Use(auth.RequireAuth(cfg.JWTSecret))
-		{
-			pollsGroup.POST("", pollHandler.CreatePoll)
-			pollsGroup.GET("", pollHandler.ListMine)
-		}
+pollsGroup.Use(auth.RequireAuth(cfg.JWTSecret))
+{
+	pollsGroup.POST("", pollHandler.CreatePoll)
+	pollsGroup.GET("", pollHandler.ListMine)
+	pollsGroup.DELETE("/:id", pollHandler.Delete)
+}
 
 		publicGroup := api.Group("/p")
 		{

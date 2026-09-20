@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api } from "../api/client";
 import { Link } from "react-router-dom";
+import { useCountdown } from "../utils/time";
 export default function CreatePoll() {
 	const [title, setTitle] = useState("");
 	const [options, setOptions] = useState(["", ""]);
@@ -9,7 +10,9 @@ export default function CreatePoll() {
 	const [createdPoll, setCreatedPoll] = useState(null);
 	const [copied, setCopied] = useState(false);
 	const [durationChoice, setDurationChoice] = useState("");
-	const [customHours, setCustomHours] = useState("");
+	const [customDateTime, setCustomDateTime] = useState("");
+	const closesText = useCountdown(createdPoll?.expires_at);
+	const minDateTimeLocal = toDatetimeLocalString(new Date(Date.now() + 5 * 60000));
 	const DURATION_OPTIONS = [
 		{ label: "No expiry", value: "" },
 		{ label: "1 hour", value: "60" },
@@ -21,6 +24,10 @@ export default function CreatePoll() {
 	];
 	function updateOption(index, value) {
 		setOptions((prev) => prev.map((opt, i) => (i === index ? value : opt)));
+	}
+	function toDatetimeLocalString(date) {
+		const pad = (n) => String(n).padStart(2, "0");
+		return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 	}
 
 	function addOption() {
@@ -46,13 +53,18 @@ export default function CreatePoll() {
 		setLoading(true);
 		let durationMinutes = 0;
 		if (durationChoice === "custom") {
-			const hours = parseFloat(customHours);
-			if (!hours || hours <= 0) {
-				setError("Enter a valid number of hours for the custom expiry.");
+			if (!customDateTime) {
+				setError("Pick a close date and time.");
 				setLoading(false);
 				return;
 			}
-			durationMinutes = Math.round(hours * 60);
+			const target = new Date(customDateTime).getTime();
+			durationMinutes = Math.round((target - Date.now()) / 60000);
+			if (durationMinutes < 5) {
+				setError("Custom close time must be at least 5 minutes from now.");
+				setLoading(false);
+				return;
+			}
 		} else if (durationChoice) {
 			durationMinutes = parseInt(durationChoice, 10);
 		}
@@ -96,7 +108,7 @@ export default function CreatePoll() {
 					</button>
 				</div>
 				<p>Share this link with your audience so they can vote.</p>
-				{createdPoll.expires_at && <p>This poll closes on {new Date(createdPoll.expires_at).toLocaleString()}.</p>}
+				{closesText && <p>{closesText}.</p>}
 				<div className="button-row">
 					<button onClick={startNewPoll}>Create another poll</button>
 					<Link to="/dashboard" className="header-button-secondary">
@@ -153,8 +165,8 @@ export default function CreatePoll() {
 
 				{durationChoice === "custom" && (
 					<label>
-						Custom duration (hours)
-						<input type="number" min="1" step="0.5" value={customHours} onChange={(e) => setCustomHours(e.target.value)} placeholder="e.g. 48" />
+						Custom close date & time
+						<input type="datetime-local" value={customDateTime} min={minDateTimeLocal} onChange={(e) => setCustomDateTime(e.target.value)} />
 					</label>
 				)}
 				<button type="submit" disabled={loading}>

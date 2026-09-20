@@ -573,3 +573,13 @@ legend {
   gap: 0.75rem;
   align-items: center;
 }
+
+.delete-button {
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid var(--border);
+}
+.delete-button:hover:not(:disabled) {
+  background: rgba(212, 63, 63, 0.08);
+  border-color: var(--danger);
+}

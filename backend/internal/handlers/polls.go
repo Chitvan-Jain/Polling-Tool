@@ -19,6 +19,7 @@ import (
 
 type PollHandler struct {
 	Polls *mongo.Collection
+	Votes *mongo.Collection
 	Redis *redis.Client
 }
 
@@ -106,6 +107,8 @@ func (h *PollHandler) GetBySlug(c *gin.Context) {
 		return
 	}
 
+	applyExpiry(ctx, h.Polls, &poll)
+
 	hasVoted := false
 	if voterID, err := c.Cookie("voter_id"); err == nil && voterID != "" {
 		votersKey := "poll:" + poll.ID.Hex() + ":voters"
@@ -114,15 +117,15 @@ func (h *PollHandler) GetBySlug(c *gin.Context) {
 		}
 	}
 
-c.JSON(http.StatusOK, gin.H{
-	"id":         poll.ID,
-	"title":      poll.Title,
-	"options":    poll.Options,
-	"status":     poll.Status,
-	"share_slug": poll.ShareSlug,
-	"expires_at": poll.ExpiresAt,
-	"has_voted":  hasVoted,
-})
+	c.JSON(http.StatusOK, gin.H{
+		"id":         poll.ID,
+		"title":      poll.Title,
+		"options":    poll.Options,
+		"status":     poll.Status,
+		"share_slug": poll.ShareSlug,
+		"expires_at": poll.ExpiresAt,
+		"has_voted":  hasVoted,
+	})
 }
 
 func (h *PollHandler) ListMine(c *gin.Context) {
@@ -148,14 +151,14 @@ func (h *PollHandler) ListMine(c *gin.Context) {
 	defer cursor.Close(ctx)
 
 	type pollSummary struct {
-	ID         primitive.ObjectID `json:"id"`
-	Title      string             `json:"title"`
-	ShareSlug  string             `json:"share_slug"`
-	Status     string             `json:"status"`
-	ExpiresAt  *time.Time         `json:"expires_at,omitempty"`
-	CreatedAt  time.Time          `json:"created_at"`
-	TotalVotes int                `json:"total_votes"`
-}
+		ID         primitive.ObjectID `json:"id"`
+		Title      string             `json:"title"`
+		ShareSlug  string             `json:"share_slug"`
+		Status     string             `json:"status"`
+		ExpiresAt  *time.Time         `json:"expires_at,omitempty"`
+		CreatedAt  time.Time          `json:"created_at"`
+		TotalVotes int                `json:"total_votes"`
+	}
 
 	summaries := []pollSummary{}
 	for cursor.Next(ctx) {
@@ -163,6 +166,8 @@ func (h *PollHandler) ListMine(c *gin.Context) {
 		if err := cursor.Decode(&poll); err != nil {
 			continue
 		}
+
+		applyExpiry(ctx, h.Polls, &poll)
 
 		total := 0
 		countsKey := "poll:" + poll.ID.Hex() + ":counts"
@@ -175,15 +180,51 @@ func (h *PollHandler) ListMine(c *gin.Context) {
 		}
 
 		summaries = append(summaries, pollSummary{
-	ID:         poll.ID,
-	Title:      poll.Title,
-	ShareSlug:  poll.ShareSlug,
-	Status:     poll.Status,
-	ExpiresAt:  poll.ExpiresAt,
-	CreatedAt:  poll.CreatedAt,
-	TotalVotes: total,
-})
+			ID:         poll.ID,
+			Title:      poll.Title,
+			ShareSlug:  poll.ShareSlug,
+			Status:     poll.Status,
+			ExpiresAt:  poll.ExpiresAt,
+			CreatedAt:  poll.CreatedAt,
+			TotalVotes: total,
+		})
 	}
 
 	c.JSON(http.StatusOK, summaries)
+}
+
+func (h *PollHandler) Delete(c *gin.Context) {
+	idParam := c.Param("id")
+	pollID, err := primitive.ObjectIDFromHex(idParam)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid poll id"})
+		return
+	}
+
+	userIDValue, _ := c.Get("userID")
+	creatorID, err := primitive.ObjectIDFromHex(userIDValue.(string))
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid user"})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	res, err := h.Polls.DeleteOne(ctx, bson.M{"_id": pollID, "creator_id": creatorID})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not delete poll"})
+		return
+	}
+	if res.DeletedCount == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "poll not found"})
+		return
+	}
+
+	h.Redis.Del(ctx, "poll:"+pollID.Hex()+":counts", "poll:"+pollID.Hex()+":voters")
+	if h.Votes != nil {
+		_, _ = h.Votes.DeleteMany(ctx, bson.M{"poll_id": pollID})
+	}
+
+	c.Status(http.StatusNoContent)
 }

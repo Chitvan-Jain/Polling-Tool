@@ -20,7 +20,7 @@ func (h *VoteHandler) LiveResults(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "poll not found"})
 		return
 	}
-
+applyExpiry(ctx, h.Polls, &poll)
 	flusher, ok := c.Writer.(http.Flusher)
 	if !ok {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "streaming not supported"})

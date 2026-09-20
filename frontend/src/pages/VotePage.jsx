@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { api } from "../api/client";
 import { ResultsList } from "../components/ResultsList";
 import { useLiveResults } from "../hooks/useLiveResults";
-
+import { useCountdown } from "../utils/time";
 export default function VotePage() {
 	const { slug } = useParams();
 	const [poll, setPoll] = useState(null);
@@ -15,7 +15,7 @@ export default function VotePage() {
 	const [alreadyVoted, setAlreadyVoted] = useState(false);
 
 	const { data: liveResults, connectionState } = useLiveResults(poll ? slug : null);
-
+	const closesText = useCountdown(poll?.expires_at);
 	useEffect(() => {
 		let cancelled = false;
 		api
@@ -91,6 +91,7 @@ export default function VotePage() {
 				<>
 					<h1>{poll.title}</h1>
 					{poll.expires_at && poll.status === "open" && <p className="expiry-note">Voting closes {new Date(poll.expires_at).toLocaleString()}.</p>}
+					
 					<form onSubmit={handleVote} className="vote-form">
 						{voteError && <p className="form-error">{voteError}</p>}
 						<fieldset>

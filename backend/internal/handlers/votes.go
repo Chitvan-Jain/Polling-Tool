@@ -74,15 +74,15 @@ func (h *VoteHandler) SubmitVote(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
-
+	
 	var poll models.Poll
 	if err := h.Polls.FindOne(ctx, bson.M{"share_slug": slug}).Decode(&poll); err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "poll not found"})
 		return
 	}
+	applyExpiry(ctx, h.Polls, &poll)
 
 	if poll.Status != models.PollStatusOpen {
 		c.JSON(http.StatusConflict, gin.H{"error": "this poll is closed"})
@@ -155,7 +155,7 @@ func (h *VoteHandler) GetResults(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "poll not found"})
 		return
 	}
-
+applyExpiry(ctx, h.Polls, &poll)
 	payload, err := h.resultsPayload(ctx, poll)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not load results"})
