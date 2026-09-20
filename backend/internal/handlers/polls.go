@@ -11,6 +11,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"github.com/chitvanjain/polling-tool/internal/models"
 	"github.com/chitvanjain/polling-tool/internal/utils"
@@ -22,8 +23,9 @@ type PollHandler struct {
 }
 
 type createPollRequest struct {
-	Title   string   `json:"title" binding:"required,min=3,max=200"`
-	Options []string `json:"options" binding:"required,min=2,max=10,dive,required,min=1,max=100"`
+	Title           string   `json:"title" binding:"required,min=3,max=200"`
+	Options         []string `json:"options" binding:"required,min=2,max=10,dive,required,min=1,max=100"`
+	DurationMinutes int      `json:"duration_minutes" binding:"omitempty,min=5,max=129600"`
 }
 
 func (h *PollHandler) CreatePoll(c *gin.Context) {
@@ -66,14 +68,21 @@ func (h *PollHandler) CreatePoll(c *gin.Context) {
 		return
 	}
 
-	poll := models.Poll{
-		CreatorID: creatorID,
-		Title:     req.Title,
-		Options:   options,
-		ShareSlug: slug,
-		Status:    models.PollStatusOpen,
-		CreatedAt: time.Now(),
-	}
+	var expiresAt *time.Time
+if req.DurationMinutes > 0 {
+	t := time.Now().Add(time.Duration(req.DurationMinutes) * time.Minute)
+	expiresAt = &t
+}
+
+poll := models.Poll{
+	CreatorID: creatorID,
+	Title:     req.Title,
+	Options:   options,
+	ShareSlug: slug,
+	Status:    models.PollStatusOpen,
+	ExpiresAt: expiresAt,
+	CreatedAt: time.Now(),
+}
 
 	res, err := h.Polls.InsertOne(ctx, poll)
 	if err != nil {
@@ -105,12 +114,76 @@ func (h *PollHandler) GetBySlug(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"id":         poll.ID,
-		"title":      poll.Title,
-		"options":    poll.Options,
-		"status":     poll.Status,
-		"share_slug": poll.ShareSlug,
-		"has_voted":  hasVoted,
-	})
+c.JSON(http.StatusOK, gin.H{
+	"id":         poll.ID,
+	"title":      poll.Title,
+	"options":    poll.Options,
+	"status":     poll.Status,
+	"share_slug": poll.ShareSlug,
+	"expires_at": poll.ExpiresAt,
+	"has_voted":  hasVoted,
+})
+}
+
+func (h *PollHandler) ListMine(c *gin.Context) {
+	userIDValue, _ := c.Get("userID")
+	creatorID, err := primitive.ObjectIDFromHex(userIDValue.(string))
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid user"})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	cursor, err := h.Polls.Find(
+		ctx,
+		bson.M{"creator_id": creatorID},
+		options.Find().SetSort(bson.D{{Key: "created_at", Value: -1}}),
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not load polls"})
+		return
+	}
+	defer cursor.Close(ctx)
+
+	type pollSummary struct {
+	ID         primitive.ObjectID `json:"id"`
+	Title      string             `json:"title"`
+	ShareSlug  string             `json:"share_slug"`
+	Status     string             `json:"status"`
+	ExpiresAt  *time.Time         `json:"expires_at,omitempty"`
+	CreatedAt  time.Time          `json:"created_at"`
+	TotalVotes int                `json:"total_votes"`
+}
+
+	summaries := []pollSummary{}
+	for cursor.Next(ctx) {
+		var poll models.Poll
+		if err := cursor.Decode(&poll); err != nil {
+			continue
+		}
+
+		total := 0
+		countsKey := "poll:" + poll.ID.Hex() + ":counts"
+		if rawCounts, err := h.Redis.HGetAll(ctx, countsKey).Result(); err == nil {
+			for _, v := range rawCounts {
+				n := 0
+				fmt.Sscanf(v, "%d", &n)
+				total += n
+			}
+		}
+
+		summaries = append(summaries, pollSummary{
+	ID:         poll.ID,
+	Title:      poll.Title,
+	ShareSlug:  poll.ShareSlug,
+	Status:     poll.Status,
+	ExpiresAt:  poll.ExpiresAt,
+	CreatedAt:  poll.CreatedAt,
+	TotalVotes: total,
+})
+	}
+
+	c.JSON(http.StatusOK, summaries)
 }

@@ -492,3 +492,84 @@ legend {
     grid-template-columns: 1fr;
   }
 }
+
+.page-wide {
+  max-width: 800px;
+}
+
+.page-header-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+}
+.empty-state p {
+  margin-bottom: 1.25rem;
+}
+
+.poll-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.poll-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.1rem 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.poll-list-main h3 {
+  font-size: 1.05rem;
+  margin-bottom: 0.35rem;
+}
+.poll-meta {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  font-size: 0.825rem;
+  color: var(--ink-muted);
+}
+.status-badge {
+  text-transform: capitalize;
+  font-weight: 600;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+}
+.status-open {
+  background: rgba(31, 182, 166, 0.15);
+  color: var(--success);
+}
+.status-closed {
+  background: rgba(212, 63, 63, 0.12);
+  color: var(--danger);
+}
+.poll-list-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+.poll-list-actions button {
+  padding: 0.5rem 0.9rem;
+  font-size: 0.875rem;
+}
+
+.button-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}

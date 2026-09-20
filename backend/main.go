@@ -82,6 +82,7 @@ router.Use(cors.New(cors.Config{
 		pollsGroup.Use(auth.RequireAuth(cfg.JWTSecret))
 		{
 			pollsGroup.POST("", pollHandler.CreatePoll)
+			pollsGroup.GET("", pollHandler.ListMine)
 		}
 
 		publicGroup := api.Group("/p")

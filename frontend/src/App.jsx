@@ -4,6 +4,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import Dashboard from "./pages/Dashboard";
 import CreatePoll from "./pages/CreatePoll";
 import VotePage from "./pages/VotePage";
 
@@ -18,6 +19,14 @@ export default function App() {
           <Route path="/vote/:slug" element={<VotePage />} />
           <Route
             path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/new"
             element={
               <ProtectedRoute>
                 <CreatePoll />

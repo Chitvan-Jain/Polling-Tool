@@ -23,5 +23,6 @@ type Poll struct {
 	Options   []PollOption       `bson:"options" json:"options"`
 	ShareSlug string             `bson:"share_slug" json:"share_slug"`
 	Status    string             `bson:"status" json:"status"`
+	ExpiresAt *time.Time         `bson:"expires_at,omitempty" json:"expires_at,omitempty"`
 	CreatedAt time.Time          `bson:"created_at" json:"created_at"`
 }
