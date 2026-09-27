@@ -232,8 +232,8 @@ legend {
 	padding: 0.5rem 0.7rem;
 }
 .remove-option-button:hover {
-	color: var(--danger);
-	border-color: var(--danger);
+	color: var(--accent-soft);
+	border-color: var(--accent-soft);
 	background: transparent;
 }
 
@@ -247,6 +247,8 @@ legend {
 .add-option-button:hover {
 	border-color: var(--accent);
 	background: var(--accent-soft);
+	color: var(--accent-soft);
+
 }
 
 .share-link-row {
@@ -624,4 +626,166 @@ legend {
 .delete-button:hover:not(:disabled) {
 	background: rgba(212, 63, 63, 0.08);
 	border-color: var(--danger);
+}
+
+.vote-share-row {
+  margin-bottom: 1.5rem;
+}
+
+.cta-banner {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+.cta-banner p {
+  margin-bottom: 1rem;
+}
+
+.custom-select {
+  position: relative;
+  margin-bottom: 1.25rem;
+}
+.custom-select-label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--ink-muted);
+  margin-bottom: 0.4rem;
+}
+.custom-select-trigger {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  padding: 0.65rem 0;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--ink);
+  cursor: pointer;
+}
+.custom-select-trigger:hover {
+  background: transparent;
+}
+.custom-select-arrow {
+  font-size: 0.7rem;
+  color: var(--ink-muted);
+  margin-left: 0.5rem;
+}
+.custom-select-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  list-style: none;
+  margin: 0;
+  padding: 0.4rem 0;
+  z-index: 20;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.custom-select-option {
+  padding: 0.6rem 1rem;
+  font-size: 0.95rem;
+  color: var(--ink);
+  cursor: pointer;
+}
+.custom-select-option:hover {
+  background: var(--accent-soft);
+}
+.custom-select-option.selected {
+  font-weight: 500;
+}
+
+.flatpickr-calendar {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-md) !important;
+  box-shadow: none !important;
+  font-family: var(--font-body) !important;
+}
+.flatpickr-calendar.arrowTop:before,
+.flatpickr-calendar.arrowTop:after {
+  display: none !important;
+}
+
+.flatpickr-months {
+  padding: 0.75rem 0.5rem 0.25rem;
+}
+.flatpickr-current-month {
+  font-family: var(--font-display) !important;
+  font-size: 1.05rem !important;
+  color: var(--ink) !important;
+}
+.flatpickr-current-month input.cur-year {
+  font-family: var(--font-display) !important;
+  color: var(--ink) !important;
+}
+.flatpickr-prev-month,
+.flatpickr-next-month {
+  color: var(--ink-muted) !important;
+  fill: var(--ink-muted) !important;
+}
+.flatpickr-prev-month:hover,
+.flatpickr-next-month:hover {
+  color: var(--ink) !important;
+}
+.flatpickr-prev-month svg,
+.flatpickr-next-month svg {
+  fill: var(--ink-muted) !important;
+}
+
+.flatpickr-weekday {
+  font-family: var(--font-body) !important;
+  font-weight: 400 !important;
+  color: var(--ink-muted) !important;
+  font-size: 0.8rem !important;
+}
+
+.flatpickr-day {
+  color: var(--ink) !important;
+  border-radius: 999px !important;
+}
+.flatpickr-day:hover {
+  background: var(--accent-soft) !important;
+  border-color: transparent !important;
+}
+.flatpickr-day.today {
+  border-color: var(--ink-muted) !important;
+}
+.flatpickr-day.selected,
+.flatpickr-day.selected:hover {
+  background: var(--ink) !important;
+  border-color: var(--ink) !important;
+  color: var(--paper) !important;
+}
+.flatpickr-day.flatpickr-disabled,
+.flatpickr-day.prevMonthDay,
+.flatpickr-day.nextMonthDay {
+  color: var(--border) !important;
+}
+
+.flatpickr-time {
+  border-top: 1px solid var(--border) !important;
+}
+.flatpickr-time input {
+  color: var(--ink) !important;
+  font-family: var(--font-body) !important;
+}
+.flatpickr-time .flatpickr-am-pm {
+  color: var(--ink) !important;
+}
+.flatpickr-time input:hover,
+.flatpickr-time .flatpickr-am-pm:hover,
+.flatpickr-time input:focus,
+.flatpickr-time .flatpickr-am-pm:focus {
+  background: var(--accent-soft) !important;
 }
