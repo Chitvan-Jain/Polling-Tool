@@ -24,9 +24,10 @@ type PollHandler struct {
 }
 
 type createPollRequest struct {
-	Title           string   `json:"title" binding:"required,min=3,max=200"`
-	Options         []string `json:"options" binding:"required,min=2,max=10,dive,required,min=1,max=100"`
-	DurationMinutes int      `json:"duration_minutes" binding:"omitempty,min=5,max=129600"`
+	Title            string   `json:"title" binding:"required,min=3,max=200"`
+	Options          []string `json:"options" binding:"required,min=2,max=10,dive,required,min=1,max=100"`
+	ResultVisibility string   `json:"result_visibility" binding:"required,oneof=always after_voting after_end private"`
+	DurationMinutes  int      `json:"duration_minutes" binding:"omitempty,min=5,max=129600"`
 }
 
 func (h *PollHandler) CreatePoll(c *gin.Context) {

@@ -1,10 +1,11 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
-"encoding/json"
+
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
 
@@ -20,7 +21,9 @@ func (h *VoteHandler) LiveResults(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "poll not found"})
 		return
 	}
-applyExpiry(ctx, h.Polls, &poll)
+
+	applyExpiry(ctx, h.Polls, &poll)
+
 	flusher, ok := c.Writer.(http.Flusher)
 	if !ok {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "streaming not supported"})
@@ -38,11 +41,24 @@ applyExpiry(ctx, h.Polls, &poll)
 		flusher.Flush()
 	}
 
-	if initial, err := h.resultsPayload(ctx, poll); err == nil {
-		if data, err := jsonMarshal(initial); err == nil {
-			writeEvent(data)
+	sendCurrentState := func() {
+		var fresh models.Poll
+		if err := h.Polls.FindOne(ctx, bson.M{"_id": poll.ID}).Decode(&fresh); err == nil {
+			applyExpiry(ctx, h.Polls, &fresh)
+			poll = fresh
+		}
+
+		hasVoted := h.hasVoterVoted(ctx, c, poll)
+		visible := canSeeResults(poll, hasVoted)
+
+		if payload, err := h.resultsPayload(ctx, poll, visible); err == nil {
+			if data, err := json.Marshal(payload); err == nil {
+				writeEvent(data)
+			}
 		}
 	}
+
+	sendCurrentState()
 
 	channel := "poll:" + poll.ID.Hex() + ":updates"
 	sub := h.Redis.Subscribe(ctx, channel)
@@ -54,11 +70,11 @@ applyExpiry(ctx, h.Polls, &poll)
 
 	for {
 		select {
-		case msg, ok := <-msgs:
+		case _, ok := <-msgs:
 			if !ok {
 				return
 			}
-			writeEvent([]byte(msg.Payload))
+			sendCurrentState()
 		case <-heartbeat.C:
 			fmt.Fprint(c.Writer, ": keepalive\n\n")
 			flusher.Flush()
@@ -66,7 +82,4 @@ applyExpiry(ctx, h.Polls, &poll)
 			return
 		}
 	}
-}
-func jsonMarshal(v interface{}) ([]byte, error) {
-	return json.Marshal(v)
 }

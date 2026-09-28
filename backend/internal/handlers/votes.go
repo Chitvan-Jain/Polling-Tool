@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -43,12 +42,33 @@ func voterIDCookie(c *gin.Context) string {
 	return newID
 }
 
-func (h *VoteHandler) resultsPayload(ctx context.Context, poll models.Poll) (gin.H, error) {
+func (h *VoteHandler) hasVoterVoted(ctx context.Context, c *gin.Context, poll models.Poll) bool {
+	voterID, err := c.Cookie("voter_id")
+	if err != nil || voterID == "" {
+		return false
+	}
+	votersKey := "poll:" + poll.ID.Hex() + ":voters"
+	isMember, err := h.Redis.SIsMember(ctx, votersKey, voterID).Result()
+	return err == nil && isMember
+}
+
+func (h *VoteHandler) resultsPayload(ctx context.Context, poll models.Poll, visible bool) (gin.H, error) {
+	if !visible {
+		return gin.H{
+			"title":   poll.Title,
+			"status":  poll.Status,
+			"visible": false,
+		}, nil
+	}
+
 	countsKey := "poll:" + poll.ID.Hex() + ":counts"
 	rawCounts, err := h.Redis.HGetAll(ctx, countsKey).Result()
 	if err != nil {
 		return nil, err
 	}
+
+	votersKey := "poll:" + poll.ID.Hex() + ":voters"
+	totalVoters, _ := h.Redis.SCard(ctx, votersKey).Result()
 
 	results := make([]optionResult, 0, len(poll.Options))
 	for _, opt := range poll.Options {
@@ -60,9 +80,11 @@ func (h *VoteHandler) resultsPayload(ctx context.Context, poll models.Poll) (gin
 	}
 
 	return gin.H{
-		"title":   poll.Title,
-		"status":  poll.Status,
-		"results": results,
+		"title":        poll.Title,
+		"status":       poll.Status,
+		"visible":      true,
+		"total_voters": totalVoters,
+		"results":      results,
 	}, nil
 }
 
@@ -74,14 +96,16 @@ func (h *VoteHandler) SubmitVote(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
-	
+
 	var poll models.Poll
 	if err := h.Polls.FindOne(ctx, bson.M{"share_slug": slug}).Decode(&poll); err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "poll not found"})
 		return
 	}
+
 	applyExpiry(ctx, h.Polls, &poll)
 
 	if poll.Status != models.PollStatusOpen {
@@ -115,8 +139,7 @@ func (h *VoteHandler) SubmitVote(c *gin.Context) {
 	}
 
 	countsKey := "poll:" + poll.ID.Hex() + ":counts"
-	newCount, err := h.Redis.HIncrBy(ctx, countsKey, req.OptionID, 1).Result()
-	if err != nil {
+	if _, err := h.Redis.HIncrBy(ctx, countsKey, req.OptionID, 1).Result(); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not record vote"})
 		return
 	}
@@ -131,17 +154,16 @@ func (h *VoteHandler) SubmitVote(c *gin.Context) {
 		log.Printf("warning: vote counted in redis but failed to persist to mongo: %v", err)
 	}
 
-	if payload, err := h.resultsPayload(ctx, poll); err == nil {
-		if data, err := json.Marshal(payload); err == nil {
-			channel := "poll:" + poll.ID.Hex() + ":updates"
-			h.Redis.Publish(ctx, channel, data)
-		}
+	h.Redis.Publish(ctx, "poll:"+poll.ID.Hex()+":updates", "refresh")
+
+	visible := canSeeResults(poll, true)
+	payload, err := h.resultsPayload(ctx, poll, visible)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not load results"})
+		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"option_id": req.OptionID,
-		"count":     newCount,
-	})
+	c.JSON(http.StatusOK, payload)
 }
 
 func (h *VoteHandler) GetResults(c *gin.Context) {
@@ -155,8 +177,13 @@ func (h *VoteHandler) GetResults(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "poll not found"})
 		return
 	}
-applyExpiry(ctx, h.Polls, &poll)
-	payload, err := h.resultsPayload(ctx, poll)
+
+	applyExpiry(ctx, h.Polls, &poll)
+
+	hasVoted := h.hasVoterVoted(ctx, c, poll)
+	visible := canSeeResults(poll, hasVoted)
+
+	payload, err := h.resultsPayload(ctx, poll, visible)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not load results"})
 		return
